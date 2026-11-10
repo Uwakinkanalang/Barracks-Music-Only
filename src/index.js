@@ -14,7 +14,7 @@ import {
 const require = createRequire(import.meta.url);
 const { Riffy } = require('riffy');
 
-const required = ['DISCORD_TOKEN', 'CLIENT_ID', 'LAVALINK_HOST', 'LAVALINK_PASSWORD'];
+const required = ['DISCORD_TOKEN', 'LAVALINK_HOST', 'LAVALINK_PASSWORD'];
 for (const key of required) {
   if (!process.env[key]) {
     console.error(`Missing required environment variable: ${key}`);
@@ -110,15 +110,23 @@ function assertPlayer(interaction) {
 }
 async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+  const applicationId = client.application.id;
   const route = process.env.GUILD_ID
-    ? Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID)
-    : Routes.applicationCommands(process.env.CLIENT_ID);
+    ? Routes.applicationGuildCommands(applicationId, process.env.GUILD_ID)
+    : Routes.applicationCommands(applicationId);
   await rest.put(route, { body: commands });
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
   client.riffy.init(client.user.id);
+  try {
+    await registerCommands();
+    console.log('Slash commands registered.');
+  } catch (error) {
+    console.error('Slash command registration failed:', error);
+    process.exit(1);
+  }
 });
 
 client.riffy = new Riffy(client, [{
@@ -289,7 +297,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 async function main() {
-  await registerCommands();
   await client.login(process.env.DISCORD_TOKEN);
 }
 main().catch(error => {
